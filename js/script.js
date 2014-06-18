@@ -3,12 +3,18 @@
 //      Global Variables
 // --------------------------
 
-var cols = 10;
-var rows = 20;
+var blockSize = 32;
+var cols = 12;
+var rows = 16;
+var width  = cols * blockSize;
+var height = rows * blockSize;
+var ctx;
+var $canvas;
 var board = [];
 var interval;
 var shape;
 var currentX, currentY; // position of current shape
+
 var shapes = [
     [ 1, 1, 1, 1 ],
     [ 1, 1, 1, 0,
@@ -25,6 +31,43 @@ var shapes = [
       1, 1, 1 ]
 ];
 
+var colors = [
+	'red','green','blue','yellow','orange','purple','cyan'
+];
+
+// --------------------------
+//          Graphics
+// --------------------------
+
+function drawBlock(x, y){
+	ctx.fillRect(blockSize * x, blockSize * y, blockSize - 0.5, blockSize - 0.5);
+	ctx.strokeRect(blockSize * x, blockSize * y, blockSize - 0.5, blockSize - 0.5);
+}
+
+function render(){
+	ctx.clearRect(0, 0, $canvas.width, $canvas.height);
+
+	ctx.strokeStyle = 'black';
+	for (var y=0; x < rows; y++){
+		for (var x=0; x < cols; x++){
+			ctx.fillStyle = colors[ board[y][x] - 1 ];
+			drawBlock(x, y);
+		}
+	}
+
+	ctx.fillStyle = 'red';
+	ctx.strokeStyle = 'rgb(60,60,60)';
+	for (var y=0; y < 4; y++){
+		for (var x=0; x < 4; x++){
+			if (shape[y][x]){
+				ctx.fillStyle = colors[ shape[y][x] - 1 ];
+				drawBlock(currentX + x, currentY + y);
+			}
+		}
+	}
+}
+
+
 function tick(){
 	// TODO: move an element down
 }
@@ -32,13 +75,19 @@ function tick(){
 // create new 4X4 space
 // A 4X4 space allows the current shape to rotate
 function newShape(){
-	// default position for every new shape
-  currentX = cols/2 - 2;
-  currentY = 0;
 
   // randomly select a shape
   var id = Math.floor( Math.random() * shapes.length );
   var selected = shapes[id];
+
+  // default position for every new shape
+  var len = 0;
+  for (var i=0; i < selected.length; i += 4){
+  	var times = selected.join('').substring(i,i+4).match(/1/g).length;
+  	if (times > len) len = times;
+  }
+  currentX = (cols - len)/2;
+	currentY = 0;
 
   // build the selected shape array 
   shape = [];
@@ -49,6 +98,12 @@ function newShape(){
       shape[y][x] = (selected[i]) ? id + 1 : 0;
     }
   }
+}
+
+// Setting the canvas as the size of the screen: width/height are optional
+function setCanvasSize(event, w, h){
+	$canvas.width  = width  || w || window.innerWidth  || documentElement.clientWidth;
+	$canvas.height = height || h || window.innerHeight || documentElement.clientHeight;
 }
 
 // clears the board
@@ -67,10 +122,15 @@ function init() {
 // --------------------------
 
 function newGame(){
+	$canvas = document.getElementById('canvas');
+	ctx = $canvas.getContext('2d');
+	setCanvasSize();
+
 	clearInterval(interval);
 	init();
 	newShape();
-	interval = setInterval(tick, 500);
+	//interval = setInterval(tick, 500);
+	return setInterval(render, 30);
 }
 
 window.onload = newGame;
