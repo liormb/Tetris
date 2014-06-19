@@ -67,6 +67,32 @@ function render(){
 	}
 }
 
+function rotate(shape){
+	var bool = true;
+	var newShape = [];
+	
+	for (var y=0; y < 4; y++){
+		newShape[y] = [];
+		for (var x=0, i=4; x < 4; x++, i--){
+			newShape[y][x] = shape[i-1][y] || 0;
+		}
+	}
+
+	while (bool){
+		for (var x=0; x < 4; x++){
+			if (newShape[x][0] !== 0) bool = false;
+		}
+		if (bool){
+			for (var i=0; i < 4; i++){
+				newShape[i].push(0);
+				newShape[i].shift();
+			}
+		}
+	}
+
+	return newShape;
+}
+
 
 function tick(){
 	// TODO: move an element down
@@ -86,7 +112,7 @@ function newShape(){
   	var times = selected.join('').substring(i,i+4).match(/1/g).length;
   	if (times > len) len = times;
   }
-  currentX = (cols - len)/2;
+  currentX = Math.floor( (cols - len)/2 );
 	currentY = 0;
 
   // build the selected shape array 
@@ -106,6 +132,54 @@ function setCanvasSize(event, w, h){
 	$canvas.height = height || h || window.innerHeight || documentElement.clientHeight;
 }
 
+// --------------------------
+//       Keys Handlers
+// --------------------------
+
+function keyPress(key){
+	switch(key){
+		case 'top':
+			shape = rotate(shape);
+			break;
+		case 'right':
+			currentX++;
+			break;
+		case 'down':
+			currentY++;
+			break;
+		case 'left':
+			currentX--;
+			break;
+	}
+}
+
+function keyPressEvent(event){
+	var keys = {
+		38: 'top',
+		39: 'right',
+		40: 'down',
+		37: 'left'
+	};
+
+	if (keys[event.keyCode]){
+		keyPress( keys[event.keyCode] );
+		render();
+	}
+}
+
+
+// --------------------------
+//       Event Handlers
+// --------------------------
+
+function eventHandlers(){
+	document.addEventListener('keydown', keyPressEvent, false);
+}
+
+// --------------------------
+//     Starts a New Game
+// --------------------------
+
 // clears the board
 // creating a new multi-d-array with zero values
 function init() {
@@ -117,10 +191,6 @@ function init() {
   }
 }
 
-// --------------------------
-//     Starts a New Game
-// --------------------------
-
 function newGame(){
 	$canvas = document.getElementById('canvas');
 	ctx = $canvas.getContext('2d');
@@ -129,8 +199,10 @@ function newGame(){
 	clearInterval(interval);
 	init();
 	newShape();
+	render();
+	eventHandlers();
 	//interval = setInterval(tick, 500);
-	return setInterval(render, 30);
+	//return setInterval(render, 30);
 }
 
 window.onload = newGame;
