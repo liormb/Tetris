@@ -3,6 +3,7 @@
 //      Global Variables
 // --------------------------
 
+var blockColor = 0;
 var blockSize = 32;
 var cols = 12;
 var rows = 16;
@@ -14,63 +15,83 @@ var board = [];
 var interval;
 var shape;
 var currentX, currentY; // position of current shape
+var speed = 1000;
+var sprite;
 
 var shapes = [
-    [ 1, 1, 1, 1 ],
-    [ 1, 1, 1, 0,
-      1 ],
-    [ 1, 1, 1, 0,
-      0, 0, 1 ],
-    [ 1, 1, 0, 0,
-      1, 1 ],
-    [ 1, 1, 0, 0,
-      0, 1, 1 ],
-    [ 0, 1, 1, 0,
-      1, 1 ],
-    [ 0, 1, 0, 0,
-      1, 1, 1 ]
-];
-
-var colors = [
-	'red','green','blue','yellow','orange','purple','cyan'
+  [ 1, 1, 1, 1 ],
+  [ 1, 1, 1, 0,
+    1 ],
+  [ 1, 1, 1, 0,
+    0, 0, 1 ],
+  [ 1, 1, 0, 0,
+    1, 1 ],
+  [ 1, 1, 0, 0,
+    0, 1, 1 ],
+  [ 0, 1, 1, 0,
+    1, 1 ],
+  [ 0, 1, 0, 0,
+    1, 1, 1 ]
 ];
 
 // --------------------------
 //          Graphics
 // --------------------------
 
-function drawBlock(x, y){
-	ctx.fillRect(blockSize * x, blockSize * y, blockSize - 0.5, blockSize - 0.5);
-	ctx.strokeRect(blockSize * x, blockSize * y, blockSize - 0.5, blockSize - 0.5);
+// Setting the canvas as the size of the screen: width/height are optional
+function setCanvasSize(event, w, h){
+	$canvas.width  = width  || w || window.innerWidth  || documentElement.clientWidth;
+	$canvas.height = height || h || window.innerHeight || documentElement.clientHeight;
 }
 
-function render(){
-	ctx.clearRect(0, 0, $canvas.width, $canvas.height);
+function drawGrid(){
+	ctx = $canvas.getContext('2d');
 
-	ctx.strokeStyle = 'black';
-	for (var y=0; x < rows; y++){
-		for (var x=0; x < cols; x++){
-			ctx.fillStyle = colors[ board[y][x] - 1 ];
-			drawBlock(x, y);
-		}
+	ctx.strokeStyle = 'rgb(140,140,140)';
+	ctx.lineWidth = 1;
+
+	for (var col=0; col < cols; col++){
+		ctx.moveTo(col * blockSize, 0);
+		ctx.lineTo(col * blockSize, $canvas.height);
+		ctx.stroke();
 	}
+	for (var row=0; row < rows; row++){
+		ctx.moveTo(0, row * blockSize);
+		ctx.lineTo($canvas.width, row * blockSize);
+		ctx.stroke();
+	}
+}
 
-	ctx.fillStyle = 'red';
-	ctx.strokeStyle = 'rgb(60,60,60)';
+function drawBlock(x, y, color){
+	ctx.drawImage(
+		sprite,
+		(color - 1) * blockSize,
+		0,
+		blockSize,
+		blockSize,
+		blockSize * x,
+		blockSize * y,
+		blockSize,
+		blockSize
+	);
+}
+
+function renderDisplay(){
+	ctx.clearRect(0, 0, $canvas.width, $canvas.height);
+	drawGrid();
+
 	for (var y=0; y < 4; y++){
 		for (var x=0; x < 4; x++){
-			if (shape[y][x]){
-				ctx.fillStyle = colors[ shape[y][x] - 1 ];
-				drawBlock(currentX + x, currentY + y);
-			}
+			if (shape[y][x]) drawBlock(currentX + x, currentY + y, blockColor);
 		}
 	}
 }
 
 function rotate(shape){
-	var bool = true;
 	var newShape = [];
+	var bool = true;
 	
+	// flipping the shape
 	for (var y=0; y < 4; y++){
 		newShape[y] = [];
 		for (var x=0, i=4; x < 4; x++, i--){
@@ -78,6 +99,7 @@ function rotate(shape){
 		}
 	}
 
+	// aligning the shape to the left
 	while (bool){
 		for (var x=0; x < 4; x++){
 			if (newShape[x][0] !== 0) bool = false;
@@ -95,7 +117,21 @@ function rotate(shape){
 
 
 function tick(){
-	// TODO: move an element down
+	if ( valid() ){
+		currentY++;
+	} else {
+		// stopShape();
+		newShape();
+	}
+}
+
+function valid(offsetX, offsetY, shape){
+	// TODO: set the game borders
+	return true;
+}
+
+function stopShape(){
+	// TODO: stop the shape when touching other shapes
 }
 
 // create new 4X4 space
@@ -105,6 +141,9 @@ function newShape(){
   // randomly select a shape
   var id = Math.floor( Math.random() * shapes.length );
   var selected = shapes[id];
+
+  // randomly choose the shape color
+  blockColor = Math.floor( Math.random() * 8 ) + 1;
 
   // default position for every new shape
   var len = 0;
@@ -120,16 +159,10 @@ function newShape(){
   for (var y=0; y < 4; y++){
     shape[y] = [];
     for (var x=0; x < 4; x++){
-      var i = 4 * y + x;
+      var i = (y * 4) + x;
       shape[y][x] = (selected[i]) ? id + 1 : 0;
     }
   }
-}
-
-// Setting the canvas as the size of the screen: width/height are optional
-function setCanvasSize(event, w, h){
-	$canvas.width  = width  || w || window.innerWidth  || documentElement.clientWidth;
-	$canvas.height = height || h || window.innerHeight || documentElement.clientHeight;
 }
 
 // --------------------------
@@ -138,18 +171,10 @@ function setCanvasSize(event, w, h){
 
 function keyPress(key){
 	switch(key){
-		case 'top':
-			shape = rotate(shape);
-			break;
-		case 'right':
-			currentX++;
-			break;
-		case 'down':
-			currentY++;
-			break;
-		case 'left':
-			currentX--;
-			break;
+		case 'top'  : shape = rotate(shape); break;
+		case 'right': currentX++; break;
+		case 'down' : currentY++; break;
+		case 'left' : currentX--; break;
 	}
 }
 
@@ -163,14 +188,18 @@ function keyPressEvent(event){
 
 	if (keys[event.keyCode]){
 		keyPress( keys[event.keyCode] );
-		render();
+		renderDisplay();
 	}
 }
-
 
 // --------------------------
 //       Event Handlers
 // --------------------------
+
+function spriteLoader(){
+	sprite = new Image();
+	sprite.src = 'assets/images/blocks.png';
+}
 
 function eventHandlers(){
 	document.addEventListener('keydown', keyPressEvent, false);
@@ -180,7 +209,6 @@ function eventHandlers(){
 //     Starts a New Game
 // --------------------------
 
-// clears the board
 // creating a new multi-d-array with zero values
 function init() {
   for (var y=0; y < rows; y++){
@@ -194,15 +222,19 @@ function init() {
 function newGame(){
 	$canvas = document.getElementById('canvas');
 	ctx = $canvas.getContext('2d');
-	setCanvasSize();
 
-	clearInterval(interval);
-	init();
-	newShape();
-	render();
+	setCanvasSize();
 	eventHandlers();
-	//interval = setInterval(tick, 500);
-	//return setInterval(render, 30);
+	spriteLoader();
+
+	sprite.onload = function(){
+		clearInterval(interval);
+		init();
+		newShape();
+		renderDisplay();
+		interval = setInterval(tick, speed);
+		return setInterval(renderDisplay, speed);
+	}
 }
 
 window.onload = newGame;
