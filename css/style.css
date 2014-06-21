@@ -1,3 +1,6 @@
+html {
+	overflow: hidden;
+}
 #canvas {
 	background: rgb(120,120,120);
 }
