@@ -5,7 +5,7 @@ var Tetris = (function(){
 	var canvas;
 	var ctx;
 	var interval;
-	var speed = 720;
+	var speed = 800;
 	var cols = 13;
 	var rows = 16;
 	var blockSize = 32;
@@ -27,12 +27,17 @@ var Tetris = (function(){
 		newGame: function(){
 			var self = this;
 			sprite.image.onload = function(){
+				clearInterval(interval);
 				self.board.drawGrid();
 				self.board.shape.new().draw();
-				interval = setInterval(function(){ self.board.tick(); }, speed);
+
+				interval = setInterval(function(){
+					self.board.tick();
+				}, speed);
 			};
 		},
 		endGame: function(){
+			clearInterval(interval);
 			alert("Game Over");
 		},
 		init: function(){
@@ -72,10 +77,12 @@ var Tetris = (function(){
 		this.sprite = new SpriteLoader();
 		this.image = this.sprite.image;
 		this.size = this.sprite.imageSize;
+		this.total = this.sprite.total;
+		sprite = null;
 	}
 	Block.prototype = {
 		random: function(){
-			return Math.floor( Math.random() * this.sprite.total ) + 1;
+			return Math.floor( Math.random() * this.total ) + 1;
 		},
 		draw: function(x, y, blockType){
 			var blockType = blockType || this.random();
@@ -95,27 +102,21 @@ var Tetris = (function(){
 			[
 		  	[ 0, 1, 0 ],
 		  	[ 1, 1, 1 ]
-		  ],
-		  [
+		  ],[
 		  	[ 0, 0, 1 ],
 		  	[ 1, 1, 1 ]
-		  ],
-		  [
+		  ],[
 		  	[ 1, 0, 0 ],
 		  	[ 1, 1, 1 ]
-		  ],
-		  [
+		  ],[
 		  	[ 1, 1, 0 ],
 		  	[ 0, 1, 1 ]
-		  ],
-		  [
+		  ],[
 		  	[ 0, 1, 1 ],
 		  	[ 1, 1, 0 ]
-		  ],
-		  [
+		  ],[
 		  	[ 1, 1, 1, 1 ]
-		  ],
-		  [
+		  ],[
 		  	[ 1, 1 ],
 		  	[ 1, 1 ]
 		  ]
@@ -171,12 +172,14 @@ var Tetris = (function(){
 
 	// Game board (GameField)
 	function Board(cols, rows){
+		var grid;
 		this.cols = cols || 13;
 		this.rows = rows || 16;
 		this.shape = new Shape();
 		this.blockSize = blockSize;
 		this.list = [];
 		this.init();
+		Score.call(this);
 	}
 	Board.prototype = {
 		init: function(){
@@ -201,8 +204,6 @@ var Tetris = (function(){
 		          || offsetX + x < 0
 		          || offsetX + x >= this.cols
 		          || offsetY + y >= this.rows ){
-
-		        	if (offsetY === 1) gameOver = true;
 		          return false;
 		        }
 		      }
@@ -228,31 +229,42 @@ var Tetris = (function(){
 				ctx.lineTo(i * this.blockSize, canvas.height);
 				ctx.stroke();
 			}
+			grid = ctx.getImageData(0, 0, canvas.width, canvas.height);
 		},
 		addShapeToBoard: function(){
-			for (var y=0; y < this.shape.layout.length; y++){
-				for (var x=0; x < this.shape.layout[0].length; x++){
-					if (this.shape.layout[y][x])
-						this.list[this.shape.currentY + y][this.shape.currentX + x] = this.shape.layout[y][x];
+			loop1:
+				for (var y=0; y < this.shape.layout.length; y++){
+			loop2:
+					for (var x=0; x < this.shape.layout[0].length; x++){
+						if (this.shape.layout[y][x]){
+							var boardX = this.shape.currentX + x;
+							var boardY = this.shape.currentY + y;
+							if (this.list[boardY][boardX]){
+								gameOver = true;
+								break loop1;
+							} else this.list[boardY][boardX] = this.shape.layout[y][x];
+						}
+					}
 				}
-			}
 		},
 		clearLines: function(){
-			for (var y = this.rows - 1; y >= 0; y--){
-				var filled = true;
-				for (var x=0; x < this.cols; x++){
-					if (!this.list[y][x]){
-						filled = false;
-						break;
-					}
-				}
-				if (filled){
-					for (var i = this.rows - 1; i > 0; i--){
-						this.list[i] = this.list[i-1];
-					}
-					y++;
-				}
-			}
+			for (var y=this.rows-1; y >= 0; y--){
+        var filled = true;
+        for (var x=0; x < this.cols; x++){
+          if (!this.list[y][x]){
+            filled = false;
+            break;
+          }
+        }
+        if (filled && y){
+          for (var yy=y; yy > 0; yy--){
+            for (var x=0; x < this.cols; x++){
+              this.list[yy][x] = this.list[yy - 1][x];
+            }
+          }
+          y++;
+        }
+    	}
 		},
 		drawBlocks: function(){
 			for (var y=0; y < this.rows; y++){
@@ -263,19 +275,18 @@ var Tetris = (function(){
 		},
 		refresh: function(){
 			this.clearDisplay();
-			this.drawGrid();
+			ctx.putImageData(grid, 0, 0);
 			this.drawBlocks();
 		},
 		tick: function(){
 			if (this.validMove(0,1)){
 				this.shape.currentY++;
 			} else {
+				this.addShapeToBoard();
 				if (gameOver){
-					clearInterval(interval);
 					window.Tetris.endGame();
 					return false;
 				}
-				this.addShapeToBoard();
 				this.clearLines();
 				this.shape = this.shape.new();
 			}
@@ -286,25 +297,28 @@ var Tetris = (function(){
 
 	// Keypress callbacks
 	function Keyboard(){
+		var self = this;
+		var keys = {
+			38: 'top',
+			39: 'right',
+			40: 'down',
+			37: 'left'
+		};
 		this.eventHandlers = function(){
-			document.addEventListener('keydown', this.keyPressEvent, false);
+			document.addEventListener('keydown', this.keyPressEvent, true);
 		};
 		this.keyPressEvent = function(event){
-			var keys = {
-				38: 'top',
-				39: 'right',
-				40: 'down',
-				37: 'left'
-			};
-
 			if (keys[event.keyCode])
-				window.Tetris.keyPress( keys[event.keyCode] );
+				self.keyPress( keys[event.keyCode] );
 		};
 		this.keyPress = function(key){
 			var refresh = false;
 
 			switch(key){
 				case 'top':
+					var shapeNewWidth  = this.board.list.length;
+					var shapeNewHeight = this.board.list[0].length;
+					 
 					this.board.shape.rotate();
 					if (this.board.validMove(0,0)){
 						refresh = true;
@@ -318,6 +332,7 @@ var Tetris = (function(){
 					break;
 				case 'down':
 					if (this.board.validMove(0,1)){
+						clearInterval(interval);
 						this.board.shape.currentY++;
 						refresh = true;
 					}
@@ -333,13 +348,21 @@ var Tetris = (function(){
 			if (refresh){
 				this.board.refresh();
 				this.board.shape.draw();
+
+				if (key === 'down'){
+					var self = this;
+					interval = setInterval(function(){
+						self.board.tick();
+					}, speed);
+				}
 			}
 		};
 	}
 
 	// Game score
 	function Score(){
-
+		var line = this.cols;
+		var bonus = 3;
 	}
 
 	return new Tetris();
