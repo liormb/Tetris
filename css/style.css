@@ -1,6 +1,47 @@
+* {
+	margin: 0;
+	padding: 0;
+}
 html {
+	background: black url(../assets/images/bg.jpg) left bottom fixed no-repeat;
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
 	overflow: hidden;
 }
-#canvas {
-	background: rgb(120,120,120);
+html, body {
+	width: 100%;
+	height: 100%;
+}
+canvas {
+	display: block;
+}
+#board {
+	padding-left: 0;
+  padding-right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 70px;
+  background: rgb(20,20,20);
+  border: 2px solid rgb(60,60,60);
+  border-radius: 4px;
+}
+#timer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	border: 1px solid red;
+}
+#score {
+	position: absolute;
+	top: 100px;
+	left: 0;
+	border: 1px solid red;
+}
+#shape {
+	position: absolute;
+	top: 200px;
+	left: 0;
+	border: 1px solid red;
 }
