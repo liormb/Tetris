@@ -2,17 +2,19 @@
 var Tetris = (function(){
 
 	var interval;
-	var speed = 800;
 	var cols = 13;
 	var rows = 20;
 	var blockSize = 32;
+	var speed = 800;
 	var gameOver = false;
 
 	// Tetris Constructor
 	function Tetris(){
-		this.board  = new Board(cols, rows, blockSize);
-		this.timer  = new Timer();
-		this.score  = new Score();
+		this.board = new Board();
+		this.timer = new Timer();
+		this.score = new Score();
+		this.level = new Level();
+		this.highScore = new HighScore();
 		this.nextShape = new NextShape();
 		Keyboard.call(this);
 		this.init();
@@ -59,16 +61,35 @@ var Tetris = (function(){
 		this.setSize();
 	}
 	Canvas.prototype = {
-		clear: function(){
-			this.ctx.clearRect(0, 0, this.width, this.height);
+		clear: function(fromX, fromY, toX, toY){
+			var fromX = fromX || 0;
+			var fromY = fromY || 0;
+			var toX = toX || this.width;
+			var toY = toY || this.height;
+			this.ctx.clearRect(fromX, fromY, toX, toY);
 		},
 		setSize: function(){
 			this.el.width  = this.width;
 			this.el.height = this.height;
+		},
+		drawHeader: function(text, color){
+			this.ctx.fillStyle = color;
+			this.ctx.fillRect(0, 0, this.width, 50);
+			this.ctx.font = "25px Arial";
+			this.ctx.fillStyle = 'black';
+			this.ctx.textAlign = 'center';
+			this.ctx.fillText(text, this.width/2, 34);
+		},
+		drawText: function(text){
+			this.clear(0, 50);
+			this.ctx.font = "25px Arial";
+			this.ctx.fillStyle = 'white';
+			this.ctx.textAlign = 'center';
+			this.ctx.fillText(text, this.width/2, 84);
 		}
 	};
 
-	// Single Tetris block
+	// Single Tetris Block
 	function Block(){
 		this.sprite = new SpriteLoader();
 		this.image = this.sprite.image;
@@ -86,7 +107,7 @@ var Tetris = (function(){
 		}
 	};
 
-	// Game shapes
+	// Shape Constructor
 	function Shape(){
 		this.block = new Block();
 		this.layout;
@@ -168,8 +189,8 @@ var Tetris = (function(){
 		}
 	};
 
-	// Game Board
-	function Board(cols, rows, blockSize){
+	// Board Constructor
+	function Board(){
 		var grid;
 		this.cols = cols || 13;
 		this.rows = rows || 16;
@@ -196,7 +217,7 @@ var Tetris = (function(){
 		  }
 		},
 		drawGrid: function(){
-			this.ctx.strokeStyle = 'rgb(40,40,40)';
+			this.ctx.strokeStyle = 'rgba(40,40,40,.8)';
 			this.ctx.lineWidth = 1;
 
 			for (var i=0; i < this.rows; i++){
@@ -307,7 +328,7 @@ var Tetris = (function(){
 		}
 	};
 
-	// Keypress
+	// Keypress Constructor
 	function Keyboard(){
 		var self = this;
 		var keys = {
@@ -367,7 +388,7 @@ var Tetris = (function(){
 		};
 	}
 
-	// Game Timer
+	// Timer Constructor
 	function Timer(){
 		this.canvas = new Canvas('timer', 200, 100);
 		this.ctx = this.canvas.ctx;
@@ -377,6 +398,7 @@ var Tetris = (function(){
 	}
 	Timer.prototype = {
 		init: function(){
+			this.canvas.drawHeader('Timer', 'rgb(147,255,36)');
 			this.render();
 			this.start();
 		},
@@ -389,7 +411,8 @@ var Tetris = (function(){
 			}, 1000);
 		},
 		reset: function(){
-
+			clearInterval(this.timerId);
+			this.time = 0;
 		},
 		toTimeFormat: function(sec){
 			var sec     = parseInt(sec, 10);
@@ -404,14 +427,11 @@ var Tetris = (function(){
 	    return hours + ':' + minutes + ':' + seconds;
 		},
 		render: function(){
-			this.canvas.clear();
-			this.ctx.font = "25px Arial";
-			this.ctx.fillStyle = "rgb(255,0,0)";
-			this.ctx.fillText(this.toTimeFormat(this.time), 100, 50);
+			this.canvas.drawText(this.toTimeFormat(this.time));
 		}
 	};
 
-	// Game Score
+	// Score Constructor
 	function Score(){
 		this.canvas = new Canvas('score', 200, 100);
 		this.ctx = this.canvas.ctx;
@@ -422,6 +442,7 @@ var Tetris = (function(){
 	}
 	Score.prototype = {
 		init: function(){
+			this.canvas.drawHeader('Score', 'rgb(0,204,255)');
 			this.updateScore(this.total);
 		},
 		numberWithCommas: function(){
@@ -431,10 +452,7 @@ var Tetris = (function(){
 			return lines * this.blocks * this.factor;
 		},
 		render: function(){
-			this.canvas.clear();
-			this.ctx.font = "25px Arial";
-			this.ctx.fillStyle = "rgb(255,0,0)";
-			this.ctx.fillText(this.numberWithCommas(), 100, 50);
+			this.canvas.drawText(this.numberWithCommas());
 		},
 		updateScore: function(lines){
 			this.total += this.calcScore(lines);
@@ -442,16 +460,53 @@ var Tetris = (function(){
 		}
 	};
 
-	// Game Next Shape
+	// Next Shape Constructor
 	function NextShape(){
-		this.canvas = new Canvas('shape', 200, 100);;
+		this.canvas = new Canvas('next-shape', 200, 150);
 		this.ctx = this.canvas.ctx;
+		this.init();
 	};
 	NextShape.prototype = {
+		init: function(){
+			this.canvas.drawHeader('Next', 'rgb(147,255,36)');
+		},
 		render: function(nextShape){
-			this.canvas.clear();
-			nextShape.currentX = 0;
+			this.canvas.clear(0, 50);
+			nextShape.currentX = 2;
+			nextShape.currentY = 2;
 			nextShape.draw(this.ctx);
+		}
+	};
+
+	// Game Level Constructor
+	function Level(){
+		this.canvas = new Canvas('level', 200, 100);
+		this.ctx = this.canvas.ctx;
+		this.init();
+	};
+	Level.prototype = {
+		init: function(){
+			this.canvas.drawHeader('Level', 'rgb(0,204,255)');
+			this.render();
+		},
+		render: function(nextShape){
+			this.canvas.drawText('1');
+		}
+	};
+
+	// High Score Constructor
+	function HighScore(){
+		this.canvas = new Canvas('high-score', 200, 100);
+		this.ctx = this.canvas.ctx;
+		this.init();
+	};
+	HighScore.prototype = {
+		init: function(){
+			this.canvas.drawHeader('High Score', 'rgb(147,255,36)');
+			this.render();
+		},
+		render: function(nextShape){
+			this.canvas.drawText('1,000,000');
 		}
 	};
 
