@@ -29,7 +29,6 @@ var Tetris = (function(){
 			var sprite = this.board.shape.block.sprite.image;
 			sprite.onload = function(){
 				self.board.init();
-				self.nextShape.render(self.board.nextShape);
 				interval = setInterval(function(){
 					self.board.tick();
 				}, speed);
@@ -61,16 +60,16 @@ var Tetris = (function(){
 		this.setSize();
 	}
 	Canvas.prototype = {
+		setSize: function(){
+			this.el.width  = this.width;
+			this.el.height = this.height;
+		},
 		clear: function(fromX, fromY, toX, toY){
 			var fromX = fromX || 0;
 			var fromY = fromY || 0;
 			var toX = toX || this.width;
 			var toY = toY || this.height;
 			this.ctx.clearRect(fromX, fromY, toX, toY);
-		},
-		setSize: function(){
-			this.el.width  = this.width;
-			this.el.height = this.height;
 		},
 		drawHeader: function(text, color){
 			this.ctx.fillStyle = color;
@@ -184,7 +183,7 @@ var Tetris = (function(){
 					}
 				}
 			} catch(e){
-				console.log("Something went wrong.");
+				console.log("Error: can't draw the shape.");
 			}
 		}
 	};
@@ -196,9 +195,9 @@ var Tetris = (function(){
 		this.rows = rows || 16;
 		this.blockSize = blockSize || 32;
 		this.canvas = new Canvas('board', cols*blockSize, rows*blockSize);
-		this.shape = new Shape();
+		this.shape  = new Shape();
 		this.nextShape = new Shape();
-		this.ctx = this.canvas.ctx;
+		this.ctx  = this.canvas.ctx;
 		this.list = [];
 	}
 	Board.prototype = {
@@ -207,6 +206,7 @@ var Tetris = (function(){
 			this.drawGrid();
 			this.shape.new().draw(this.ctx);
 			this.nextShape.new();
+			window.Tetris.nextShape.render(this.nextShape);
 		},
 		initGrid: function(){
 			for (var y=0; y < this.rows; y++){
@@ -290,7 +290,7 @@ var Tetris = (function(){
           y++;
         }
     	}
-    	window.Tetris.score.updateScore(lines); // Update current score
+    	if (lines) window.Tetris.score.updateScore(lines); // Update current score
 		},
 		drawBlocks: function(){
 			for (var y=0; y < this.rows; y++){
