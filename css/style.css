@@ -20,6 +20,28 @@ html, body {
 	height: 100%;
 	margin: 0 auto;
 }
+#button-container {
+	width: 416px;
+	height: 640px;
+	border: 2px solid white;
+	border-radius: 10px;
+	background: rgba(0,204,255,.8);
+	z-index: 1;
+}
+button#play-game {
+	width: 180px;
+	height: 80px;
+	border: 2px solid white;
+	border-radius: 10px;
+	font-size: 30px;
+	background: rgb(147,255,36);
+	color: rgb(40,40,40);
+}
+button#play-game:hover {
+	background: rgb(0,204,255);
+	color: white;
+	cursor: pointer;
+}
 canvas {
 	display: block;
 	position: absolute;
@@ -27,14 +49,7 @@ canvas {
   border: 2px solid white;
   border-radius: 10px;
 }
-#board {
-	position: absolute;
-  margin: auto;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-}
+#board {}
 #timer {
 	top: 20px;
 	left: 20px;
@@ -60,11 +75,26 @@ canvas {
 	left: 20px;
 	border-color: rgb(147,255,36);
 }
+.centered {
+	position: absolute;
+  margin: auto;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+.transition {
+	-webkit-transition: all 0.5s;
+	-moz-transition: all 0.5s;
+	-o-transition: all 0.5s;
+	-ms-transition: all 0.5s;
+	transition: all 0.5s;
+}
 
 /* Smaller devices (iPhone, less than 768px) */
 @media (max-width: 900px) {
 	canvas:not(#board) { left: 3%; right: auto; }
-	#board { right: 3%; left: auto; }
+	#board, #button-container { right: 3%; left: auto; }
 	#timer { top: 67px; }
 	#score { top: 190px; }
 	#level { top: 312px; }

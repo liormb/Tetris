@@ -6,7 +6,7 @@ var Tetris = (function(){
 	var rows = 20;
 	var blockSize = 32;
 	var speed = 800;
-	var gameOver = false;
+	var gameOver;
 
 	// Tetris Constructor
 	function Tetris(){
@@ -22,22 +22,27 @@ var Tetris = (function(){
 	Tetris.prototype = {
 		init: function(){
 			this.eventHandlers();
-			this.newGame();
+			this.board.drawGrid();
 		},
 		newGame: function(){
-			var self = this;
 			var sprite = this.board.shape.block.sprite.image;
-			sprite.onload = function(){
-				self.board.init();
-				interval = setInterval(function(){
-					self.board.tick();
-				}, speed);
-			};
+			gameOver = false;
+			this.timer.start();
+			this.score.reset();
+			sprite.onload = this.startGame();
+		},
+		startGame: function(){
+			var self = this;
+			self.board.init();
+			document.getElementById('button-container').style.display = 'none';
+			interval = setInterval(function(){
+				self.board.tick();
+			}, speed);
 		},
 		endGame: function(){
 			clearInterval(interval);
 			clearInterval(this.timer.timerId);
-			alert("Game Over");
+			document.getElementById('button-container').style.display = 'block';
 		}
 	};
 
@@ -190,9 +195,9 @@ var Tetris = (function(){
 
 	// Board Constructor
 	function Board(){
-		var grid;
+		this.grid;
 		this.cols = cols || 13;
-		this.rows = rows || 16;
+		this.rows = rows || 20;
 		this.blockSize = blockSize || 32;
 		this.canvas = new Canvas('board', cols*blockSize, rows*blockSize);
 		this.shape  = new Shape();
@@ -203,9 +208,10 @@ var Tetris = (function(){
 	Board.prototype = {
 		init: function(){
 			this.initGrid();
-			this.drawGrid();
-			this.shape.new().draw(this.ctx);
+			this.shape.new();
 			this.nextShape.new();
+			(this.grid) ? this.refresh() : this.drawGrid();
+			this.shape.draw(this.ctx);
 			window.Tetris.nextShape.render(this.nextShape);
 		},
 		initGrid: function(){
@@ -230,7 +236,7 @@ var Tetris = (function(){
 				this.ctx.lineTo(i * this.blockSize, this.canvas.height);
 				this.ctx.stroke();
 			}
-			grid = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+			this.grid = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
 		},
 		validMove: function(incX, incY, shape){
 			var shape = shape || this.shape;
@@ -262,7 +268,7 @@ var Tetris = (function(){
 						if (this.shape.layout[y][x]){
 							var boardX = this.shape.currentX + x;
 							var boardY = this.shape.currentY + y;
-							if (this.list[boardY][boardX]){
+							if (!boardY){
 								gameOver = true;
 								break loop1;
 							} else this.list[boardY][boardX] = this.shape.layout[y][x];
@@ -300,8 +306,9 @@ var Tetris = (function(){
 			}
 		},
 		refresh: function(){
+			var self = this;
 			this.canvas.clear();
-			this.ctx.putImageData(grid, 0, 0);
+			this.ctx.putImageData(self.grid, 0, 0);
 			this.drawBlocks();
 		},
 		tick: function(){
@@ -338,6 +345,7 @@ var Tetris = (function(){
 			37: 'left'
 		};
 		this.eventHandlers = function(){
+			document.getElementById('play-game').addEventListener('mouseup', self.newGame.bind(self), false);
 			document.addEventListener('keydown', this.keyPressEvent, true);
 		};
 		this.keyPressEvent = function(event){
@@ -400,12 +408,11 @@ var Tetris = (function(){
 		init: function(){
 			this.canvas.drawHeader('Timer', 'rgb(147,255,36)');
 			this.render();
-			this.start();
 		},
 		start: function(){
 			var self = this;
-			clearInterval(this.timerId);
-			this.timerId = setInterval(function(){
+			self.reset();
+			self.timerId = setInterval(function(){
 				self.time += 1;
 				self.render();
 			}, 1000);
@@ -413,6 +420,7 @@ var Tetris = (function(){
 		reset: function(){
 			clearInterval(this.timerId);
 			this.time = 0;
+			this.render();
 		},
 		toTimeFormat: function(sec){
 			var sec     = parseInt(sec, 10);
@@ -443,6 +451,10 @@ var Tetris = (function(){
 	Score.prototype = {
 		init: function(){
 			this.canvas.drawHeader('Score', 'rgb(0,204,255)');
+			this.updateScore(this.total);
+		},
+		reset: function(){
+			this.total = 0;
 			this.updateScore(this.total);
 		},
 		numberWithCommas: function(){
@@ -506,7 +518,7 @@ var Tetris = (function(){
 			this.render();
 		},
 		render: function(nextShape){
-			this.canvas.drawText('1,000,000');
+			this.canvas.drawText('422,600');
 		}
 	};
 
