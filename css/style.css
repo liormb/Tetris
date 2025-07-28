@@ -57,34 +57,33 @@ canvas {
 	display: block;
 	position: absolute;
 	background: rgba(20,20,20,.8);
-  border: 2px solid white;
-  border-radius: 10px;
-}
-#board {}
-#timer {
-	top: 20px;
-	left: 20px;
-	border-color: rgb(147,255,36);
-}
-#score {
-	top: 150px;
-	left: 20px;
-	border-color: rgb(0,204,255);
+  	border: 2px solid white;
+  	border-radius: 10px;
 }
 #level {
 	top: 20px;
-	right: 20px;
+	left: 20px;
 	border-color: rgb(0,204,255);
 }
-#high-score {
+#timer {
 	top: 150px;
-	right: 20px;
+	left: 20px;
 	border-color: rgb(147,255,36);
 }
 #next-shape {
 	bottom: 20px;
 	left: 20px;
 	border-color: rgb(147,255,36);
+}
+#highest-score {
+	top: 20px;
+	right: 20px;
+	border-color: rgb(147,255,36);
+}
+#score {
+	top: 150px;
+	right: 20px;
+	border-color: rgb(0,204,255);
 }
 .centered {
 	position: absolute;
@@ -106,11 +105,11 @@ canvas {
 @media (max-width: 900px) {
 	canvas:not(#board) { left: 3%; right: auto; }
 	#board, #play-button-container, #pause-button-container { right: 3%; left: auto; }
-	#timer { top: 67px; }
-	#score { top: 190px; }
 	#level { top: 312px; }
-	#high-score { top: 434px; }
+	#timer { top: 67px; }
 	#next-shape { top: 557px; }
+	#high-score { top: 434px; }
+	#score { top: 190px; }
 }
 @media (min-width: 700px) and (max-width: 900px) {
 	.container { width: 700px; }

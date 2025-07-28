@@ -4,10 +4,10 @@ var Tetris = (function(){
 	var cols = 13;
 	var rows = 20;
 	var blockSize = 32;
-	var gameState = 'init'; // 'init', 'running', 'paused', 'over'
-	var speed = 800; // Initial speed
+	var speed = 800;
 	var minSpeed = 300;
 	var maxLevel = 100;
+	var gameState = 'init'; // 'init', 'running', 'paused', 'over'
 	var timeLevelIncrement = 600; // Every 10 minutes
 
 	// Tetris Constructor
@@ -16,7 +16,7 @@ var Tetris = (function(){
 		this.timer = new Timer();
 		this.score = new Score();
 		this.level = new Level();
-		this.highScore = new HighScore();
+		this.highestScore = new HighestScore();
 		this.nextShape = new NextShape();
 		Keyboard.call(this);
 		this.init();
@@ -29,7 +29,9 @@ var Tetris = (function(){
 		newGame: function(){
 			var sprite = this.board.shape.block.sprite.image;
 			gameState = 'init';
+			this.level.init();
 			this.timer.start();
+			this.highestScore.init();
 			this.score.reset();
 			sprite.onload = this.startGame();
 		},
@@ -59,6 +61,7 @@ var Tetris = (function(){
 			gameState = 'over';
 			clearInterval(interval);
 			clearInterval(this.timer.timerId);
+			this.highestScore.setScore(this.score.getScore());
 			document.getElementById('play-button-container').style.display = 'block';
 		}
 	};
@@ -443,10 +446,9 @@ var Tetris = (function(){
 			var self = this;
 			if (!isResumed) self.reset();
 			self.timerId = setInterval(function(){
-				// Increase level and speed every 10 minutes
-				if (self.time && self.time % timeLevelIncrement === 0 &&this.Tetris.level.currentLevel < maxLevel) {
+				// Increase level and speed
+				if (self.time && (self.time % timeLevelIncrement === 0)) {
 					this.Tetris.level.increase();
-					speed = Math.max(minSpeed, speed - 50);
 				}
 				self.time += 1;
 				self.render();
@@ -491,7 +493,7 @@ var Tetris = (function(){
 	}
 	Score.prototype = {
 		init: function(){
-			this.canvas.drawHeader('Score', 'rgb(0,204,255)');
+			this.canvas.drawHeader('My Score', 'rgb(0,204,255)');
 			this.render();
 		},
 		reset: function(){
@@ -504,9 +506,40 @@ var Tetris = (function(){
 		calcReward: function(rowsCleared = 0){
 			return this.scoring[rowsCleared - 1] || 0;
 		},
+		getScore: function(){
+			return this.total;
+		},
 		updateScore: function(rowsCleared){
 			this.total += this.calcReward(rowsCleared);
 			this.render();
+		},
+		render: function(){
+			this.canvas.drawText(this.numberWithCommas());
+		}
+	};
+
+	// High Score Constructor
+	function HighestScore(){
+		this.canvas = new Canvas('highest-score', 200, 100);
+		this.ctx = this.canvas.ctx;
+		this.init();
+	};
+	HighestScore.prototype = {
+		init: function(){
+			this.canvas.drawHeader('Highest Score', 'rgb(147,255,36)');
+			this.render();
+		},
+		getScore: function(){
+			return Number(window.localStorage.getItem('highest-score')) || 0;
+		},
+		setScore: function(score = 0){
+			if (score > this.getScore()) {
+				window.localStorage.setItem('highest-score', score);
+				this.render();
+			}
+		},
+		numberWithCommas: function(){
+    		return this.getScore().toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 		},
 		render: function(){
 			this.canvas.drawText(this.numberWithCommas());
@@ -535,37 +568,22 @@ var Tetris = (function(){
 	function Level(){
 		this.canvas = new Canvas('level', 200, 100);
 		this.ctx = this.canvas.ctx;
-		this.currentLevel = 1;
 		this.init();
 	};
 	Level.prototype = {
 		init: function(){
+			this.currentLevel = 1;
 			this.canvas.drawHeader('Level', 'rgb(0,204,255)');
 			this.render();
 		},
 		increase: function(){
+			speed = Math.max(minSpeed, speed - 50);
 			this.currentLevel++;
 			if (this.currentLevel > maxLevel) this.currentLevel = maxLevel;
 			this.render();
 		},
 		render: function(nextShape){
 			this.canvas.drawText(this.currentLevel);
-		}
-	};
-
-	// High Score Constructor
-	function HighScore(){
-		this.canvas = new Canvas('high-score', 200, 100);
-		this.ctx = this.canvas.ctx;
-		this.init();
-	};
-	HighScore.prototype = {
-		init: function(){
-			this.canvas.drawHeader('High Score', 'rgb(147,255,36)');
-			this.render();
-		},
-		render: function(nextShape){
-			this.canvas.drawText('422,600');
 		}
 	};
 
