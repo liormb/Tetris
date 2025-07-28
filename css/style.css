@@ -20,7 +20,8 @@ html, body {
 	height: 100%;
 	margin: 0 auto;
 }
-#button-container {
+#play-button-container,
+#pause-button-container {
 	width: 416px;
 	height: 640px;
 	border: 2px solid white;
@@ -28,7 +29,12 @@ html, body {
 	background: rgba(0,204,255,.8);
 	z-index: 1;
 }
-button#play-game {
+#pause-button-container {
+	display: none;
+	background: rgba(0,0,0,.3);
+}
+button#play-game,
+button#pause-game {
 	width: 180px;
 	height: 80px;
 	border: 2px solid white;
@@ -37,7 +43,12 @@ button#play-game {
 	background: rgb(147,255,36);
 	color: rgb(40,40,40);
 }
-button#play-game:hover {
+button#pause-game {
+	background: rgb(147,255,36,.8);
+	z-index: 1;
+}
+button#play-game:hover,
+button#pause-game:hover {
 	background: rgb(0,204,255);
 	color: white;
 	cursor: pointer;
@@ -94,7 +105,7 @@ canvas {
 /* Smaller devices (iPhone, less than 768px) */
 @media (max-width: 900px) {
 	canvas:not(#board) { left: 3%; right: auto; }
-	#board, #button-container { right: 3%; left: auto; }
+	#board, #play-button-container, #pause-button-container { right: 3%; left: auto; }
 	#timer { top: 67px; }
 	#score { top: 190px; }
 	#level { top: 312px; }

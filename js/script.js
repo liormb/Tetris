@@ -1,12 +1,14 @@
 
 var Tetris = (function(){
-
 	var interval;
 	var cols = 13;
 	var rows = 20;
 	var blockSize = 32;
-	var speed = 800;
-	var gameOver;
+	var gameState = 'init'; // 'init', 'running', 'paused', 'over'
+	var speed = 800; // Initial speed
+	var minSpeed = 300;
+	var maxLevel = 100;
+	var timeLevelIncrement = 600; // Every 10 minutes
 
 	// Tetris Constructor
 	function Tetris(){
@@ -26,23 +28,38 @@ var Tetris = (function(){
 		},
 		newGame: function(){
 			var sprite = this.board.shape.block.sprite.image;
-			gameOver = false;
+			gameState = 'init';
 			this.timer.start();
 			this.score.reset();
 			sprite.onload = this.startGame();
 		},
-		startGame: function(){
+		startGame: function(isResumed = false){
 			var self = this;
-			self.board.init();
-			document.getElementById('button-container').style.display = 'none';
+			gameState = 'running';
+			if (!isResumed) self.board.init();
+			document.getElementById('play-button-container').style.display = 'none';
+			document.getElementById('pause-button-container').style.display = 'none';
 			interval = setInterval(function(){
 				self.board.tick();
 			}, speed);
 		},
-		endGame: function(){
+		pauseGame: function(){
+			this.timer.pause();
+			gameState = 'paused';
 			clearInterval(interval);
 			clearInterval(this.timer.timerId);
-			document.getElementById('button-container').style.display = 'block';
+			document.getElementById('pause-button-container').style.display = 'block';
+		},
+		resumeGame: function(){
+			this.timer.resume();
+			gameState = 'running';
+			this.startGame(true);
+		},
+		endGame: function(){
+			gameState = 'over';
+			clearInterval(interval);
+			clearInterval(this.timer.timerId);
+			document.getElementById('play-button-container').style.display = 'block';
 		}
 	};
 
@@ -241,62 +258,63 @@ var Tetris = (function(){
 		validMove: function(incX, incY, shape){
 			var shape = shape || this.shape;
 			var offsetX = shape.currentX + incX;
-		  var offsetY = shape.currentY + incY;
+		  	var offsetY = shape.currentY + incY;
 
-		  for (var y=0; y < shape.layout.length; y++){
-		    for (var x=0; x < shape.layout[0].length; x++){
-		      if (shape.layout[y][x]){
-		        if ( typeof this.list[offsetY + y] === 'undefined'
-		          || typeof this.list[offsetY + y][offsetX + x] === 'undefined'
-		          || this.list[offsetY + y][offsetX + x]
-		          || offsetX + x < 0
-		          || offsetX + x >= this.cols
-		          || offsetY + y >= this.rows ){
-		          return false;
-		        }
-		      }
-		    }
-		  }
-
+			for (var y=0; y < shape.layout.length; y++){
+				for (var x=0; x < shape.layout[0].length; x++){
+					if (shape.layout[y][x]){
+						if ( typeof this.list[offsetY + y] === 'undefined'
+						|| typeof this.list[offsetY + y][offsetX + x] === 'undefined'
+						|| this.list[offsetY + y][offsetX + x]
+						|| offsetX + x < 0
+						|| offsetX + x >= this.cols
+						|| offsetY + y >= this.rows ){
+							return false;
+						}
+					}
+				}
+			}
 			return true;
 		},
 		addShapeToBoard: function(){
 			loop1:
 				for (var y=0; y < this.shape.layout.length; y++){
-			loop2:
+				loop2:
 					for (var x=0; x < this.shape.layout[0].length; x++){
 						if (this.shape.layout[y][x]){
 							var boardX = this.shape.currentX + x;
 							var boardY = this.shape.currentY + y;
 							if (!boardY){
-								gameOver = true;
+								gameState = 'over';
 								break loop1;
 							} else this.list[boardY][boardX] = this.shape.layout[y][x];
 						}
 					}
 				}
 		},
-		clearLines: function(){
-			var lines = 0;
+		clearRows: function(){
+			var rowsCleared = 0;
 			for (var y=this.rows-1; y >= 0; y--){
-        var filled = true;
-        for (var x=0; x < this.cols; x++){
-          if (!this.list[y][x]){
-            filled = false;
-            break;
-          }
-        }
-        if (filled && y){
-          for (var yy=y; yy > 0; yy--){
-            for (var x=0; x < this.cols; x++){
-              this.list[yy][x] = this.list[yy - 1][x];
-            }
-          }
-          lines++;
-          y++;
-        }
-    	}
-    	if (lines) window.Tetris.score.updateScore(lines); // Update current score
+        		var filled = true;
+        		for (var x=0; x < this.cols; x++){
+          			if (!this.list[y][x]){
+            			filled = false;
+            			break;
+          			}
+        		}
+        		if (filled && y){
+          			for (var yy=y; yy > 0; yy--){
+            			for (var x=0; x < this.cols; x++){
+              				this.list[yy][x] = this.list[yy - 1][x];
+            			}
+          			}
+          			rowsCleared++;
+          			y++;
+        		}
+    		}
+    		if (rowsCleared) {
+				window.Tetris.score.updateScore(rowsCleared);
+			}
 		},
 		drawBlocks: function(){
 			for (var y=0; y < this.rows; y++){
@@ -316,9 +334,9 @@ var Tetris = (function(){
 				this.shape.currentY++;
 			} else {
 				this.addShapeToBoard();
-				this.clearLines();
+				this.clearRows();
 
-				if (gameOver){
+				if (gameState === 'over'){
 					window.Tetris.endGame();
 					return false;
 				}
@@ -339,6 +357,7 @@ var Tetris = (function(){
 	function Keyboard(){
 		var self = this;
 		var keys = {
+			32: 'halt',
 			38: 'top',
 			39: 'right',
 			40: 'down',
@@ -350,12 +369,23 @@ var Tetris = (function(){
 		};
 		this.keyPressEvent = function(event){
 			if (keys[event.keyCode])
-				self.keyPress( keys[event.keyCode] );
+				self.keyPress(keys[event.keyCode]);
 		};
 		this.keyPress = function(key){
 			var refresh = false;
 
+			if (gameState === 'paused' && key !== 'halt'){
+				return false;
+			}
+
 			switch(key){
+				case 'halt':
+					if (gameState === 'running'){
+						this.pauseGame();
+					} else if (gameState === 'paused'){
+						this.resumeGame();
+					}
+					break;
 				case 'top':
 					this.board.shape.rotate();
 					if (this.board.validMove(0,0))
@@ -409,13 +439,24 @@ var Tetris = (function(){
 			this.canvas.drawHeader('Timer', 'rgb(147,255,36)');
 			this.render();
 		},
-		start: function(){
+		start: function(isResumed = false){
 			var self = this;
-			self.reset();
+			if (!isResumed) self.reset();
 			self.timerId = setInterval(function(){
+				// Increase level and speed every 10 minutes
+				if (self.time && self.time % timeLevelIncrement === 0 &&this.Tetris.level.currentLevel < maxLevel) {
+					this.Tetris.level.increase();
+					speed = Math.max(minSpeed, speed - 50);
+				}
 				self.time += 1;
 				self.render();
 			}, 1000);
+		},
+		pause: function() {
+			clearInterval(this.timerId);
+		},
+		resume: function() {
+			this.start(true);
 		},
 		reset: function(){
 			clearInterval(this.timerId);
@@ -424,15 +465,15 @@ var Tetris = (function(){
 		},
 		toTimeFormat: function(sec){
 			var sec     = parseInt(sec, 10);
-	    var hours   = Math.floor(sec / 3600);
-	    var minutes = Math.floor((sec - (hours * 3600)) / 60);
-	    var seconds = sec - (hours * 3600) - (minutes * 60);
+			var hours   = Math.floor(sec / 3600);
+			var minutes = Math.floor((sec - (hours * 3600)) / 60);
+			var seconds = sec - (hours * 3600) - (minutes * 60);
 
-	    if (hours   < 10) hours   = '0' + hours;
-	    if (minutes < 10) minutes = '0' + minutes;
-	    if (seconds < 10) seconds = '0' + seconds;
+			if (hours   < 10) hours   = '0' + hours;
+			if (minutes < 10) minutes = '0' + minutes;
+			if (seconds < 10) seconds = '0' + seconds;
 
-	    return hours + ':' + minutes + ':' + seconds;
+			return hours + ':' + minutes + ':' + seconds;
 		},
 		render: function(){
 			this.canvas.drawText(this.toTimeFormat(this.time));
@@ -445,30 +486,30 @@ var Tetris = (function(){
 		this.ctx = this.canvas.ctx;
 		this.total = 0;
 		this.blocks = cols;
-		this.factor = 100;
+		this.scoring = [100, 300, 500, 800];
 		this.init();
 	}
 	Score.prototype = {
 		init: function(){
 			this.canvas.drawHeader('Score', 'rgb(0,204,255)');
-			this.updateScore(this.total);
+			this.render();
 		},
 		reset: function(){
 			this.total = 0;
-			this.updateScore(this.total);
+			this.render();
 		},
 		numberWithCommas: function(){
-    	return this.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    		return this.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 		},
-		calcScore: function(lines){
-			return lines * this.blocks * this.factor;
+		calcReward: function(rowsCleared = 0){
+			return this.scoring[rowsCleared - 1] || 0;
+		},
+		updateScore: function(rowsCleared){
+			this.total += this.calcReward(rowsCleared);
+			this.render();
 		},
 		render: function(){
 			this.canvas.drawText(this.numberWithCommas());
-		},
-		updateScore: function(lines){
-			this.total += this.calcScore(lines);
-			this.render();
 		}
 	};
 
@@ -494,6 +535,7 @@ var Tetris = (function(){
 	function Level(){
 		this.canvas = new Canvas('level', 200, 100);
 		this.ctx = this.canvas.ctx;
+		this.currentLevel = 1;
 		this.init();
 	};
 	Level.prototype = {
@@ -501,8 +543,13 @@ var Tetris = (function(){
 			this.canvas.drawHeader('Level', 'rgb(0,204,255)');
 			this.render();
 		},
+		increase: function(){
+			this.currentLevel++;
+			if (this.currentLevel > maxLevel) this.currentLevel = maxLevel;
+			this.render();
+		},
 		render: function(nextShape){
-			this.canvas.drawText('1');
+			this.canvas.drawText(this.currentLevel);
 		}
 	};
 
