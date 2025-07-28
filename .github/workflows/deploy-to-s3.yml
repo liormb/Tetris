@@ -2,7 +2,8 @@ name: Deploy to S3
 
 on:
   push:
-    branches: [master, main, remote/master, remote/main]
+    branches:
+      - main
 
 jobs:
   deploy:
