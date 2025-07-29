@@ -33,9 +33,9 @@ html, body {
 	display: none;
 	background: rgba(0,0,0,.3);
 }
-button#play-game,
-button#pause-game {
-	width: 180px;
+button#play-button,
+button#pause-button {
+	width: 200px;
 	height: 80px;
 	border: 2px solid white;
 	border-radius: 10px;
@@ -43,12 +43,12 @@ button#pause-game {
 	background: rgb(147,255,36);
 	color: rgb(40,40,40);
 }
-button#pause-game {
+button#pause-button {
 	background: rgb(147,255,36,.8);
 	z-index: 1;
 }
-button#play-game:hover,
-button#pause-game:hover {
+button#play-button:hover,
+button#pause-button:hover {
 	background: rgb(0,204,255);
 	color: white;
 	cursor: pointer;
@@ -75,7 +75,7 @@ canvas {
 	left: 20px;
 	border-color: rgb(147,255,36);
 }
-#highest-score {
+#top-score {
 	top: 20px;
 	right: 20px;
 	border-color: rgb(147,255,36);

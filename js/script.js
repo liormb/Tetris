@@ -10,15 +10,15 @@ var Tetris = (function(){
 
 	// Tetris Constructor
 	function Tetris(){
+		this.interval;
 		this.board = new Board();
 		this.timer = new Timer();
 		this.score = new Score();
 		this.level = new Level();
-		this.highestScore = new HighestScore();
+		this.topScore = new TopScore();
 		this.nextShape = new NextShape();
 		this.speed = MIN_SPEED;
 		this.state = 'INIT'; // 'INIT', 'RUNNING', 'PAUSED', 'OVER'
-		this.interval;
 		Keyboard.call(this);
 		this.init();
 	}
@@ -59,7 +59,8 @@ var Tetris = (function(){
 			clearInterval(this.interval);
 			this.timer.stop();
 			this.state = 'OVER';
-			this.highestScore.setScore(this.score.getScore());
+			this.topScore.setScore(this.score.getScore());
+			document.getElementById('play-button').textContent = 'Play Again!';
 			document.getElementById('play-button-container').style.display = 'block';
 		}
 	};
@@ -69,7 +70,7 @@ var Tetris = (function(){
 		var path = 'assets/images/';
 		this.image = new Image();
 		this.image.src = path + ((src) ? src : 'blocks.png');
-		this.imageSize = BLOCK_SIZE || 32;
+		this.imageSize = BLOCK_SIZE;
 		this.total = 7;
 	}
 
@@ -214,9 +215,6 @@ var Tetris = (function(){
 	// Board Constructor
 	function Board(){
 		this.grid;
-		this.cols = COLS || 13;
-		this.rows = ROWS || 20;
-		this.blockSize = BLOCK_SIZE || 32;
 		this.canvas = new Canvas('board', COLS*BLOCK_SIZE, ROWS*BLOCK_SIZE);
 		this.shape  = new Shape();
 		this.nextShape = new Shape();
@@ -239,9 +237,9 @@ var Tetris = (function(){
 			}, window.Tetris.speed);
 		},
 		initGrid: function(){
-			for (var y=0; y < this.rows; y++){
+			for (var y=0; y < ROWS; y++){
 		    	this.list[y] = [];
-		    	for (var x=0; x < this.cols; x++){
+		    	for (var x=0; x < COLS; x++){
 		      		this.list[y][x] = 0;
 		    	}
 		  	}
@@ -250,14 +248,14 @@ var Tetris = (function(){
 			this.ctx.strokeStyle = 'rgba(40,40,40,.8)';
 			this.ctx.lineWidth = 1;
 
-			for (var i=0; i < this.rows; i++){
-				this.ctx.moveTo(0, i * this.blockSize);
-				this.ctx.lineTo(this.canvas.width, i * this.blockSize);
+			for (var i=0; i < ROWS; i++){
+				this.ctx.moveTo(0, i * BLOCK_SIZE);
+				this.ctx.lineTo(this.canvas.width, i * BLOCK_SIZE);
 				this.ctx.stroke();
 			}
-			for (var i=0; i < this.cols; i++){
-				this.ctx.moveTo(i * this.blockSize, 0);
-				this.ctx.lineTo(i * this.blockSize, this.canvas.height);
+			for (var i=0; i < COLS; i++){
+				this.ctx.moveTo(i * BLOCK_SIZE, 0);
+				this.ctx.lineTo(i * BLOCK_SIZE, this.canvas.height);
 				this.ctx.stroke();
 			}
 			this.grid = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -274,8 +272,8 @@ var Tetris = (function(){
 						|| typeof this.list[offsetY + y][offsetX + x] === 'undefined'
 						|| this.list[offsetY + y][offsetX + x]
 						|| offsetX + x < 0
-						|| offsetX + x >= this.cols
-						|| offsetY + y >= this.rows ){
+						|| offsetX + x >= COLS
+						|| offsetY + y >= ROWS){
 							return false;
 						}
 					}
@@ -303,9 +301,9 @@ var Tetris = (function(){
 		},
 		clearRows: function(){
 			var rowsCleared = 0;
-			for (var y=this.rows-1; y >= 0; y--){
+			for (var y=ROWS-1; y >= 0; y--){
         		var filled = true;
-        		for (var x=0; x < this.cols; x++){
+        		for (var x=0; x < COLS; x++){
           			if (!this.list[y][x]){
             			filled = false;
             			break;
@@ -313,7 +311,7 @@ var Tetris = (function(){
         		}
         		if (filled && y){
           			for (var yy=y; yy > 0; yy--){
-            			for (var x=0; x < this.cols; x++){
+            			for (var x=0; x < COLS; x++){
               				this.list[yy][x] = this.list[yy - 1][x];
             			}
           			}
@@ -326,8 +324,8 @@ var Tetris = (function(){
 			}
 		},
 		drawBlocks: function(){
-			for (var y=0; y < this.rows; y++){
-				for (var x=0; x < this.cols; x++){
+			for (var y=0; y < ROWS; y++){
+				for (var x=0; x < COLS; x++){
 					if (this.list[y][x]) this.shape.block.draw(this.ctx, x, y, this.list[y][x]);
 				}
 			}
@@ -372,7 +370,8 @@ var Tetris = (function(){
 			37: 'left'
 		};
 		this.eventHandlers = function(){
-			document.getElementById('play-game').addEventListener('mouseup', self.newGame.bind(self), false);
+			document.getElementById('play-button').addEventListener('mouseup', self.newGame.bind(self), false);
+			document.getElementById('pause-button').addEventListener('mouseup', self.resumeGame.bind(self), false);
 			document.addEventListener('keydown', this.keyPressEvent, true);
 		};
 		this.keyPressEvent = function(event){
@@ -517,24 +516,24 @@ var Tetris = (function(){
 		}
 	};
 
-	// High Score Constructor
-	function HighestScore(){
-		this.canvas = new Canvas('highest-score', 200, 100);
+	// Top Score Constructor
+	function TopScore(){
+		this.canvas = new Canvas('top-score', 200, 100);
 		this.ctx = this.canvas.ctx;
 		this.score = this.getScore();
 		this.init();
 	};
-	HighestScore.prototype = {
+	TopScore.prototype = {
 		init: function(){
-			this.canvas.drawHeader('Highest Score', 'rgb(147,255,36)');
+			this.canvas.drawHeader('Top Score', 'rgb(147,255,36)');
 			this.render();
 		},
 		getScore: function(){
-			return Number(window.localStorage.getItem('highest-score')) || 0;
+			return Number(window.localStorage.getItem('top-score')) || 0;
 		},
 		setScore: function(score = 0){
 			if (score > this.score) {
-				window.localStorage.setItem('highest-score', score);
+				window.localStorage.setItem('top-score', score);
 				this.score = score;
 				this.render();
 			}
@@ -549,10 +548,7 @@ var Tetris = (function(){
 
 	// Next Shape Constructor
 	function NextShape(){
-		this.canvasWidth = 200;
-		this.canvasHight = 150;
-		this.canvasHeaderHeight = 50;
-		this.canvas = new Canvas('next-shape', this.canvasWidth, this.canvasHight);
+		this.canvas = new Canvas('next-shape', 200, 150);
 		this.ctx = this.canvas.ctx;
 		this.init();
 	};
@@ -563,9 +559,10 @@ var Tetris = (function(){
 		render: function(nextShape){
 			var width = nextShape.layout[0].length;
 			var height = nextShape.layout.length;
-			this.canvas.clear(0, this.canvasHeaderHeight);
-			nextShape.currentX = (this.canvasWidth - (BLOCK_SIZE * width)) / 2 / BLOCK_SIZE;
-			nextShape.currentY = ((this.canvasHight + this.canvasHeaderHeight) - (BLOCK_SIZE * height)) / 2 / BLOCK_SIZE;
+			var offset = 50;
+			this.canvas.clear(0, offset);
+			nextShape.currentX = (this.canvas.width - (BLOCK_SIZE * width)) / BLOCK_SIZE / 2;
+			nextShape.currentY = ((this.canvas.height + offset) - (BLOCK_SIZE * height)) / BLOCK_SIZE / 2;
 			nextShape.draw(this.ctx);
 		}
 	};
