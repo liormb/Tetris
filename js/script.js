@@ -1,15 +1,12 @@
 
 var Tetris = (function(){
-	var interval;
-	var cols = 13;
-	var rows = 20;
-	var blockSize = 32;
-	var minSpeed = 800;
-	var maxSpeed = 300;
-	var speed = minSpeed;
-	var maxLevel = 100;
-	var gameState = 'init'; // 'init', 'running', 'paused', 'over'
-	var timeLevelIncrement = 600; // Every 10 minutes
+	var COLS = 13;
+	var ROWS = 20;
+	var BLOCK_SIZE = 32;
+	var MIN_SPEED = 800;
+	var MAX_SPEED = 300;
+	var MAX_LEVEL = 100;
+	var TIME_LEVEL_INCREMENT = 600; // New level every 10 minutes
 
 	// Tetris Constructor
 	function Tetris(){
@@ -19,6 +16,9 @@ var Tetris = (function(){
 		this.level = new Level();
 		this.highestScore = new HighestScore();
 		this.nextShape = new NextShape();
+		this.speed = MIN_SPEED;
+		this.state = 'INIT'; // 'INIT', 'RUNNING', 'PAUSED', 'OVER'
+		this.interval;
 		Keyboard.call(this);
 		this.init();
 	}
@@ -29,8 +29,8 @@ var Tetris = (function(){
 		},
 		newGame: function(){
 			var sprite = this.board.shape.block.sprite.image;
-			gameState = 'init';
-			speed = minSpeed;
+			this.state = 'INIT';
+			this.speed = MIN_SPEED;
 			this.level.init();
 			this.timer.init();
 			this.score.init();
@@ -38,30 +38,27 @@ var Tetris = (function(){
 			sprite.onload = this.startGame();
 		},
 		startGame: function(isResumed){
-			var self = this;
-			gameState = 'running';
 			if (!isResumed) this.timer.start();
+			this.state = 'RUNNING';
 			document.getElementById('play-button-container').style.display = 'none';
 			document.getElementById('pause-button-container').style.display = 'none';
-			interval = setInterval(function(){
-				self.board.tick();
-			}, speed);
+			this.board.startTicking();
 		},
 		pauseGame: function(){
-			gameState = 'paused';
+			clearInterval(this.interval);
 			this.timer.pause();
-			clearInterval(interval);
+			this.state = 'PAUSED';
 			document.getElementById('pause-button-container').style.display = 'block';
 		},
 		resumeGame: function(){
-			gameState = 'running';
 			this.timer.resume();
+			this.state = 'RUNNING';
 			this.startGame(true);
 		},
 		endGame: function(){
-			gameState = 'over';
-			clearInterval(interval);
+			clearInterval(this.interval);
 			this.timer.stop();
+			this.state = 'OVER';
 			this.highestScore.setScore(this.score.getScore());
 			document.getElementById('play-button-container').style.display = 'block';
 		}
@@ -72,7 +69,7 @@ var Tetris = (function(){
 		var path = 'assets/images/';
 		this.image = new Image();
 		this.image.src = path + ((src) ? src : 'blocks.png');
-		this.imageSize = blockSize || 32;
+		this.imageSize = BLOCK_SIZE || 32;
 		this.total = 7;
 	}
 
@@ -140,7 +137,7 @@ var Tetris = (function(){
 		this.currentX = 0;
 		this.currentY = 0;
 		this.layouts = [
-			[
+		  [
 		  	[ 0, 1, 0 ],
 		  	[ 1, 1, 1 ]
 		  ],[
@@ -176,7 +173,7 @@ var Tetris = (function(){
 			this.layout = layout;
 		},
 		defaultXY: function(){
-			this.currentX = Math.floor((cols - this.layout[0].length)/2);
+			this.currentX = Math.floor((COLS - this.layout[0].length)/2);
 			this.currentY = 0;
 		},
 		new: function(){
@@ -187,8 +184,8 @@ var Tetris = (function(){
 		fixCurrentXY: function(){
 			if (this.currentX < 0) this.currentX = 0;
 			if (this.currentY < 0) this.currentY = 0;
-			if (this.currentX + this.layout[0].length > cols) this.currentX = cols - this.layout[0].length;
-			if (this.currentY + this.layout.length    > rows) this.currentY = rows - this.layout.length;
+			if (this.currentX + this.layout[0].length > COLS) this.currentX = COLS - this.layout[0].length;
+			if (this.currentY + this.layout.length    > ROWS) this.currentY = ROWS - this.layout.length;
 		},
 		rotate: function(){
 			var newLayout = [];
@@ -217,10 +214,10 @@ var Tetris = (function(){
 	// Board Constructor
 	function Board(){
 		this.grid;
-		this.cols = cols || 13;
-		this.rows = rows || 20;
-		this.blockSize = blockSize || 32;
-		this.canvas = new Canvas('board', cols*blockSize, rows*blockSize);
+		this.cols = COLS || 13;
+		this.rows = ROWS || 20;
+		this.blockSize = BLOCK_SIZE || 32;
+		this.canvas = new Canvas('board', COLS*BLOCK_SIZE, ROWS*BLOCK_SIZE);
 		this.shape  = new Shape();
 		this.nextShape = new Shape();
 		this.ctx  = this.canvas.ctx;
@@ -234,6 +231,12 @@ var Tetris = (function(){
 			this.grid ? this.refresh() : this.drawGrid();
 			this.shape.draw(this.ctx);
 			window.Tetris.nextShape.render(this.nextShape);
+		},
+		startTicking: function(){
+			var self = this;
+			window.Tetris.interval = setInterval(() => {
+				self.tick();
+			}, window.Tetris.speed);
 		},
 		initGrid: function(){
 			for (var y=0; y < this.rows; y++){
@@ -289,7 +292,7 @@ var Tetris = (function(){
 							var boardX = this.shape.currentX + x;
 							var boardY = this.shape.currentY + y;
 							if (!boardY){
-								gameState = 'over';
+								window.Tetris.state = 'OVER';
 								break loop1;
 							} else {
 								this.list[boardY][boardX] = this.shape.layout[y][x];
@@ -342,7 +345,7 @@ var Tetris = (function(){
 				this.addShapeToBoard();
 				this.clearRows();
 
-				if (gameState === 'over'){
+				if (window.Tetris.state === 'OVER'){
 					window.Tetris.endGame();
 					return false;
 				}
@@ -379,15 +382,15 @@ var Tetris = (function(){
 		this.keyPress = function(key){
 			var refresh = false;
 
-			if (gameState === 'paused' && key !== 'space'){
+			if (window.Tetris.state === 'PAUSED' && key !== 'space'){
 				return false;
 			}
 
 			switch(key){
 				case 'space':
-					if (gameState === 'running'){
+					if (window.Tetris.state === 'RUNNING'){
 						this.pauseGame();
-					} else if (gameState === 'paused'){
+					} else if (window.Tetris.state === 'PAUSED'){
 						this.resumeGame();
 					}
 					break;
@@ -404,7 +407,7 @@ var Tetris = (function(){
 					break;
 				case 'down':
 					if (this.board.validMove(0,1)){
-						clearInterval(interval);
+						clearInterval(window.Tetris.interval);
 						this.board.shape.currentY++;
 						refresh = true;
 					}
@@ -422,10 +425,7 @@ var Tetris = (function(){
 				this.board.shape.draw(this.board.ctx);
 
 				if (key === 'down'){
-					var self = this;
-					interval = setInterval(function(){
-						self.board.tick();
-					}, speed);
+					this.board.startTicking();
 				}
 			}
 		};
@@ -448,14 +448,15 @@ var Tetris = (function(){
 		},
 		start: function(){
 			var self = this;
+			var second = 1000;
 			self.timerId = setInterval(function(){
 				// Increase level and speed
-				if (self.time && (self.time % timeLevelIncrement === 0)) {
+				if (self.time && (self.time % TIME_LEVEL_INCREMENT === 0)) {
 					window.Tetris.level.increase();
 				}
 				self.time += 1;
 				self.render();
-			}, 1000);
+			}, second);
 		},
 		pause: function() {
 			clearInterval(this.timerId);
@@ -488,7 +489,7 @@ var Tetris = (function(){
 		this.canvas = new Canvas('score', 200, 100);
 		this.ctx = this.canvas.ctx;
 		this.total = 0;
-		this.blocks = cols;
+		this.blocks = COLS;
 		this.scoring = [100, 300, 500, 800];
 		this.init();
 	}
@@ -548,7 +549,10 @@ var Tetris = (function(){
 
 	// Next Shape Constructor
 	function NextShape(){
-		this.canvas = new Canvas('next-shape', 200, 150);
+		this.canvasWidth = 200;
+		this.canvasHight = 150;
+		this.canvasHeaderHeight = 50;
+		this.canvas = new Canvas('next-shape', this.canvasWidth, this.canvasHight);
 		this.ctx = this.canvas.ctx;
 		this.init();
 	};
@@ -557,9 +561,11 @@ var Tetris = (function(){
 			this.canvas.drawHeader('Next', 'rgb(147,255,36)');
 		},
 		render: function(nextShape){
-			this.canvas.clear(0, 50);
-			nextShape.currentX = 2;
-			nextShape.currentY = 2;
+			var width = nextShape.layout[0].length;
+			var height = nextShape.layout.length;
+			this.canvas.clear(0, this.canvasHeaderHeight);
+			nextShape.currentX = (this.canvasWidth - (BLOCK_SIZE * width)) / 2 / BLOCK_SIZE;
+			nextShape.currentY = ((this.canvasHight + this.canvasHeaderHeight) - (BLOCK_SIZE * height)) / 2 / BLOCK_SIZE;
 			nextShape.draw(this.ctx);
 		}
 	};
@@ -577,9 +583,9 @@ var Tetris = (function(){
 			this.render();
 		},
 		increase: function(){
-			speed = Math.max(maxSpeed, speed - 50);
+			window.Tetris.speed = Math.max(MAX_SPEED, window.Tetris.speed - 50);
 			this.currentLevel++;
-			if (this.currentLevel > maxLevel) this.currentLevel = maxLevel;
+			if (this.currentLevel > MAX_LEVEL) this.currentLevel = MAX_LEVEL;
 			this.render();
 		},
 		render: function(nextShape){
